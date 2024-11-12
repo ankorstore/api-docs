@@ -42,63 +42,8 @@ paths:
         - $ref: '#/components/parameters/pageBefore'
         - $ref: '#/components/parameters/pageAfter'
       responses:
-        default: { $ref: "#/components/responses/ErrorResponse" }
-        "200": { $ref: "#/components/responses/StockStateCollectionResponse" }
-  /api/astral/private/v1/stock/reservation:
-    post:
-      tags:
-        - Private
-        - Reservations
-      summary: Reserve stock
-      description: |
-        This operation will reserve a set of pickable stock quantities.
-
-        Entries must include positive quantities only
-
-        If successful, the endpoint will return a 201 status code and the reservation will have been created exactly
-        as specified. It will have created a transaction for the reservation and postings with
-        movementType: `order_reserved` for each item (expanded from the product variants specified in the payload).
-
-        The endpoint will return an error if an existing reservation with the same ID already exists.
-        The endpoint will return an error if the total quantity reserved per item is negative.
-        The endpoint will return an error if the total quantity reserved per item exceeds the available quantity.
-      operationId: create-reservation
-      parameters:
-        - $ref: '#/components/parameters/acceptInHeader'
-        - $ref: '#/components/parameters/xAksBrandUuidHeader'
-        - $ref: '#/components/parameters/xAksRetailerUuidHeader'
-      requestBody: { $ref: '#/components/requestBodies/StockReservationRequest' }
-      responses:
-        default: { $ref: "#/components/responses/ErrorResponse" }
-        "201": { $ref: "#/components/responses/NoContent" }
-    patch:
-      tags:
-        - Private
-        - Reservations
-      summary: Update stock reservation
-      description: |
-        This operation will update a reservation with an additional set of pickable stock quantities.
-
-        Please include only the DIFFERENCES with to the original reservation.
-        Entries may include negative quantities, as long as the total quantity reserved per item does not end up negative.
-
-        If successful, the endpoint will return a 204 status code and the reservation will have been updated exactly
-        as specified. It will have added additional postings with movementType: `order_reserved` for each item,
-        (expanded from the product variants specified in the payload) to the transaction associated
-        with the original reservation.
-
-        The endpoint will return an error if an existing reservation with the same ID is not found.
-        The endpoint will return an error if the total quantity reserved per item ends up negative.
-        The endpoint will return an error if the total quantity reserved per item exceeds the available quantity.
-      operationId: patch-reservation
-      parameters:
-        - $ref: '#/components/parameters/acceptInHeader'
-        - $ref: '#/components/parameters/xAksBrandUuidHeader'
-        - $ref: '#/components/parameters/xAksRetailerUuidHeader'
-      requestBody: { $ref: '#/components/requestBodies/StockReservationRequest' }
-      responses:
-        default: { $ref: "#/components/responses/ErrorResponse" }
-        "204": { $ref: "#/components/responses/NoContent" }
+        default: {$ref: "#/components/responses/ErrorResponse"}
+        "200": {$ref: "#/components/responses/StockStateCollectionResponse"}
   /api/astral/v1/stock/postings:
     get:
       tags:
@@ -137,24 +82,23 @@ paths:
           required: false
           schema:
             type: array
-            items: { $ref: '#/components/schemas/MovementType' }
+            items: {$ref: '#/components/schemas/MovementType'}
         - name: filter[movementType][notIn][]
           in: query
           description: Exclude specific movement types
           required: false
           schema:
             type: array
-            items: { $ref: '#/components/schemas/MovementType' }
+            items: {$ref: '#/components/schemas/MovementType'}
         - name: include
           in: query
           description: >-
-            A comma-separated list of resources to include. Options are
-            transaction, lot
+            A comma-separated list of resources to include. Options are transaction, lot
           schema:
             type: string
       responses:
-        default: { $ref: "#/components/responses/ErrorResponse" }
-        "200": { $ref: "#/components/responses/PostingCollectionResponse" }
+        default: {$ref: "#/components/responses/ErrorResponse"}
+        "200": {$ref: "#/components/responses/PostingCollectionResponse"}
   /api/astral/v1/stock/transactions:
     get:
       tags:
@@ -203,8 +147,8 @@ paths:
           schema:
             type: string
       responses:
-        default: { $ref: "#/components/responses/ErrorResponse" }
-        "200": { $ref: "#/components/responses/TransactionCollectionResponse" }
+        default: {$ref: "#/components/responses/ErrorResponse"}
+        "200": {$ref: "#/components/responses/TransactionCollectionResponse"}
   /api/astral/v1/stock/locations:
     get:
       tags:
@@ -222,163 +166,13 @@ paths:
         - $ref: '#/components/parameters/pageBefore'
         - $ref: '#/components/parameters/pageAfter'
       responses:
-        default: { $ref: "#/components/responses/ErrorResponse" }
-        "200": { $ref: "#/components/responses/LocationCollectionResponse" }
-  /api/astral/private/v1/stock/locations:
-    post:
-      tags:
-        - Private
-        - Locations
-      summary: Create location
-      description: |
-        Create a new location. The id must be unique across locations. ExternalId does not need to be, though it is
-        greatly recommended to be unique, at least in combination with type.
-      operationId: create-location
-      parameters:
-        - $ref: '#/components/parameters/acceptInHeader'
-        - $ref: '#/components/parameters/xAksBrandUuidHeader'
-        - $ref: '#/components/parameters/xAksRetailerUuidHeader'
-      requestBody: { $ref: '#/components/requestBodies/LocationRequest' }
-      responses:
-        default: { $ref: "#/components/responses/ErrorResponse" }
-        "200": { $ref: "#/components/responses/LocationResponse" }
+        default: {$ref: "#/components/responses/ErrorResponse"}
+        "200": {$ref: "#/components/responses/LocationCollectionResponse"}
 tags:
   - name: How to work with the Ankorstore Stock Tracking and Logistics API
-    description: |-
-      ℹ️ This section provides an overview of the general concepts and conventions used throughout the API.
-
-      ### API Specification
-      This API follows the [Ankorstore API Specification](https://api-spec.ankorstore.com) which is based on the [JSON:API](https://jsonapi.org/) specification.
-
-      ### Headers
-      When making any request, the header `Accept: application/vnd.api+json` is required.
-      When sending JSON within the body of a request the header `Content-Type: application/vnd.api+json` is also required.
-
-      🔗 [Learn more about JSON:API media types](https://jsonapi.org/format/#jsonapi-media-type)
-
-      ### Resource Data
-      In every response, the actual resource data can be found in the root level object `data`, this will either be an array
-      or an object, depending on if its list based or not.
-
-      🔗 [Learn more about JSON:API document structure](https://jsonapi.org/format/#document-structure)
-
-      ### Includes
-      Resources may have the ability to include data from other relations in the same request.
-      For example, when fetching a single posting you may include the related transaction and lots
-
-      `?include=transaction,lots`
-
-      <div class="info">
-
-      ### Pagination
-      Ankorstore uses cursor based pagination. In the root level object for pagination supported endpoints
-      you will find a `meta` object containing pagination information:
-
-      ```yaml json_schema
-        type: object
-        description: Meta
-        properties:
-          meta:
-            type: object
-            description: Meta with Pagination Details
-            properties:
-              page:
-                description: Cursor pagination details
-                type: object
-                properties:
-                  from:
-                    type: string
-                  to:
-                    type: string
-                  hasMore:
-                    type: boolean
-                  perPage:
-                    type: integer
-      ```
-
-      As an example:
-
-      ```json
-      {
-        "meta": {
-          "page": {
-            "from": "63e9bacd-0288-4cf1-81ab-b34270c7f68a",
-            "to": "747a1dcd-decc-4f8d-a9a9-61ff4d33d92e",
-            "hasMore": true,
-            "perPage": 15
-          }
-        }
-      }
-      ```
-
-      You may manually construct the pagination query parameters yourself using `page[limit]` with `page[before]`
-      or `page[after]` depending on which direction you wish to iterate over.
-
-      <div class="info">
-
-      #### Effective pagination
-
-      We recommend using the provided helper pagination links below instead of manually constructing the URLs yourself.
-
-      </div>
-
-      The response will also provide pagination links, so you do not need to construct these yourself:
-
-      ```yaml json_schema
-        type: object
-        description: Links
-        properties:
-          links:
-            description: Pagination navigation links. If a link does not exist then you cannot paginate any further in that direction.
-            type: object
-            properties:
-              first:
-                type: string
-                format: url
-              next:
-                type: string
-                format: url
-              prev:
-                type: string
-                format: url
-      ```
-
-      As an example:
-
-      ```json
-      {
-        "links": {
-          "first": "https://www.ankorstore.com/api/astral/v1/postings?page%5Blimit%5D=15",
-          "next": "https://www.ankorstore.com/api/astral/v1/postings?page%5Bafter%5D=1189606a-139e-4b4e-917c-b0c992498bad&page%5Blimit%5D=15",
-          "prev": "https://www.ankorstore.com/api/astral/v1/postings?page%5Bbefore%5D=e04e17bb-9e70-4ecd-a8f5-4417d45b872c&page%5Blimit%5D=15"
-        }
-      }
-      ```
-
-      🔗 [Learn more about JSON:API pagination](https://jsonapi.org/format/#fetching-pagination)
-
-      ### Filters
-
-      An endpoint that supports filters requires each listed filter to be wrapped in a filter object.
-      E.g. you may wish to only retrieve stock quantities for a given status:
-
-      `?filter[status][]=available`
-
-      You may chain filters as well:
-
-      `?filter[status][]=available&filter[locationIds][]=1189606a-572e-4b4e-88da-b0c992498bad`
-
-      <div class="info">
-
-      #### What filters can be used?
-
-      The supported filters will be listed on each endpoint in the API documentation.
-
-      </div>
-
-      🔗 [Learn more about JSON:API filters](https://jsonapi.org/format/#fetching-filtering)
+    description: "ℹ️ This section provides an overview of the general concepts and conventions used throughout the API.\n\n### API Specification\nThis API follows the [Ankorstore API Specification](https://api-spec.ankorstore.com) which is based on the [JSON:API](https://jsonapi.org/) specification.\n\n### Headers\nWhen making any request, the header `Accept: application/vnd.api+json` is required.\nWhen sending JSON within the body of a request the header `Content-Type: application/vnd.api+json` is also required.\n\n\U0001F517 [Learn more about JSON:API media types](https://jsonapi.org/format/#jsonapi-media-type)\n\n### Resource Data\nIn every response, the actual resource data can be found in the root level object `data`, this will either be an array\nor an object, depending on if its list based or not.\n\n\U0001F517 [Learn more about JSON:API document structure](https://jsonapi.org/format/#document-structure)\n\n### Includes\nResources may have the ability to include data from other relations in the same request.\nFor example, when fetching a single posting you may include the related transaction and lots\n\n`?include=transaction,lots`\n\n<div class=\"info\">\n\n### Pagination\nAnkorstore uses cursor based pagination. In the root level object for pagination supported endpoints\nyou will find a `meta` object containing pagination information:\n\n```yaml json_schema\n  type: object\n  description: Meta\n  properties:\n    meta:\n      type: object\n      description: Meta with Pagination Details\n      properties:\n        page:\n          description: Cursor pagination details\n          type: object\n          properties:\n            from:\n              type: string\n            to:\n              type: string\n            hasMore:\n              type: boolean\n            perPage:\n              type: integer\n```\n\nAs an example:\n\n```json\n{\n  \"meta\": {\n    \"page\": {\n      \"from\": \"63e9bacd-0288-4cf1-81ab-b34270c7f68a\",\n      \"to\": \"747a1dcd-decc-4f8d-a9a9-61ff4d33d92e\",\n      \"hasMore\": true,\n      \"perPage\": 15\n    }\n  }\n}\n```\n\nYou may manually construct the pagination query parameters yourself using `page[limit]` with `page[before]`\nor `page[after]` depending on which direction you wish to iterate over.\n\n<div class=\"info\">\n\n#### Effective pagination\n\nWe recommend using the provided helper pagination links below instead of manually constructing the URLs yourself.\n\n</div>\n\nThe response will also provide pagination links, so you do not need to construct these yourself:\n\n```yaml json_schema\n  type: object\n  description: Links\n  properties:\n    links:\n      description: Pagination navigation links. If a link does not exist then you cannot paginate any further in that direction.\n      type: object\n      properties:\n        first:\n          type: string\n          format: url\n        next:\n          type: string\n          format: url\n        prev:\n          type: string\n          format: url\n```\n\nAs an example:\n\n```json\n{\n  \"links\": {\n    \"first\": \"https://www.ankorstore.com/api/astral/v1/postings?page%5Blimit%5D=15\",\n    \"next\": \"https://www.ankorstore.com/api/astral/v1/postings?page%5Bafter%5D=1189606a-139e-4b4e-917c-b0c992498bad&page%5Blimit%5D=15\",\n    \"prev\": \"https://www.ankorstore.com/api/astral/v1/postings?page%5Bbefore%5D=e04e17bb-9e70-4ecd-a8f5-4417d45b872c&page%5Blimit%5D=15\"\n  }\n}\n```\n\n\U0001F517 [Learn more about JSON:API pagination](https://jsonapi.org/format/#fetching-pagination)\n\n### Filters\n\nAn endpoint that supports filters requires each listed filter to be wrapped in a filter object.\nE.g. you may wish to only retrieve stock quantities for a given status:\n\n`?filter[status][]=available`\n\nYou may chain filters as well:\n\n`?filter[status][]=available&filter[locationIds][]=1189606a-572e-4b4e-88da-b0c992498bad`\n\n<div class=\"info\">\n\n#### What filters can be used?\n\nThe supported filters will be listed on each endpoint in the API documentation.\n\n</div>\n\n\U0001F517 [Learn more about JSON:API filters](https://jsonapi.org/format/#fetching-filtering)"
   - name: Authentication
-    description: |-
+    description: |+
       ℹ️ The Ankorstore API uses OAuth2 authentication, in order to get a `client_id` and a `client_secret` please,
       login at https://www.ankorstore.com/ and generate a new application
       in the [integrations](https://ankorstore.com/account/integrations) area of your account.
@@ -442,25 +236,6 @@ tags:
       }
       ```
 
-      <div class="internal">
-        <h3>Private Authentication</h3>
-        When calling the Ankorstore API from within the Ankorstore infrastructure, applications may authenticate as
-        machine users. In this case, no token is required, but you will need to supply the `X-Aks-Brand-Uuid` header, populated
-        with the brandUuid, or the `X-Aks-Retailer-Uuid` header, populated
-        with the retailerUuid to scope the request to the correct brand or retailer.
-
-        ```json http
-        {
-          "method": "GET",
-          "headers": {
-            "accept": "application/application/vnd.api+json",
-            "X-Client-Id": "3b6aa8c2-9e1f-4a62-8fc7-f9725317e1d4"
-          },
-          "baseUrl": "https://www.ankorstore.com",
-          "url": "/api/astral/v1/..."
-        }
-        ```
-      </div>
   - name: Stock Concepts
     description: |-
       ℹ️ This section defines the various concepts and entities used in the API.
@@ -540,14 +315,7 @@ tags:
       be created when the stock balances in status `available` is higher than the requested quantities, and will move the
       requested quantities of stock from the `available` status to the `reserved` status within the same location.
 
-      <div class="internal">
-        <h2>Items</h2>
-        Items are an internal concept only, used to represent the indivisible pickable entity for stock tracking
-        (versus product variants being the sellable entity). They facilitate the concept of bundles vs single product variants,
-        whereby "single" product variants are mapped as a bundle containing 1 item with multiplier 1.
 
-        Items are not exposed within the API, as it is not expected that external systems will interact with them directly!
-      </div>
 
       ### Postings
       Postings are always linked to items, and each item must be linked to at least one "single" product variant. So the
@@ -573,7 +341,7 @@ components:
           schema:
             type: object
             properties:
-              data: { $ref: '#/components/schemas/StockReservation' }
+              data: {$ref: '#/components/schemas/StockReservation'}
             required:
               - data
           examples:
@@ -600,7 +368,7 @@ components:
           schema:
             type: object
             properties:
-              data: { $ref: '#/components/schemas/LocationResource' }
+              data: {$ref: '#/components/schemas/LocationResource'}
             required:
               - data
           examples:
@@ -612,13 +380,11 @@ components:
                   attributes:
                     externalId: 1841c9e9-33cc-4fd5-8045-32654adcc78a
                     type: warehouse
-
   securitySchemes:
     CookieKey:
       type: apiKey
       name: ankorstore_session
       in: cookie
-
   responses:
     NoContent: # 201
       description: No content
@@ -631,11 +397,10 @@ components:
             properties:
               errors:
                 type: array
-                items: { $ref: '#/components/schemas/Error' }
-              jsonapi: { $ref: '#/components/schemas/jsonapi' }
+                items: {$ref: '#/components/schemas/Error'}
+              jsonapi: {$ref: '#/components/schemas/jsonapi'}
             required:
               - errors
-
     StockStateCollectionResponse:
       description: Set of stock state records
       content:
@@ -645,10 +410,10 @@ components:
             properties:
               data:
                 type: array
-                items: { $ref: '#/components/schemas/ProductVariantStockStateResource' }
-              jsonapi: { $ref: '#/components/schemas/jsonapi' }
-              meta: { $ref: '#/components/schemas/paginationMeta' }
-              links: { $ref: '#/components/schemas/paginationLinks'}
+                items: {$ref: '#/components/schemas/ProductVariantStockStateResource'}
+              jsonapi: {$ref: '#/components/schemas/jsonapi'}
+              meta: {$ref: '#/components/schemas/paginationMeta'}
+              links: {$ref: '#/components/schemas/paginationLinks'}
             required:
               - data
               - jsonapi
@@ -697,7 +462,7 @@ components:
                             lotNumber: 'lot-without-expiry'
                 jsonapi:
                   version: string
-                  meta: { }
+                  meta: {}
     LocationCollectionResponse:
       description: Set of locations
       content:
@@ -707,10 +472,10 @@ components:
             properties:
               data:
                 type: array
-                items: { $ref: '#/components/schemas/LocationResource' }
-              jsonapi: { $ref: '#/components/schemas/jsonapi' }
-              meta: { $ref: '#/components/schemas/paginationMeta' }
-              links: { $ref: '#/components/schemas/paginationLinks'}
+                items: {$ref: '#/components/schemas/LocationResource'}
+              jsonapi: {$ref: '#/components/schemas/jsonapi'}
+              meta: {$ref: '#/components/schemas/paginationMeta'}
+              links: {$ref: '#/components/schemas/paginationLinks'}
             required:
               - data
               - jsonapi
@@ -721,8 +486,8 @@ components:
           schema:
             type: object
             properties:
-              data: { $ref: '#/components/schemas/LocationResource' }
-              jsonapi: { $ref: '#/components/schemas/jsonapi' }
+              data: {$ref: '#/components/schemas/LocationResource'}
+              jsonapi: {$ref: '#/components/schemas/jsonapi'}
             required:
               - data
               - jsonapi
@@ -730,7 +495,7 @@ components:
       description: Set of postings
       content:
         application/vnd.api+json:
-          schema: { $ref: '#/components/schemas/PostingCollection' }
+          schema: {$ref: '#/components/schemas/PostingCollection'}
           examples:
             example-get-postings-simple:
               value:
@@ -846,7 +611,7 @@ components:
       description: Set of transactions
       content:
         application/vnd.api+json:
-          schema: { $ref: '#/components/schemas/TransactionCollection' }
+          schema: {$ref: '#/components/schemas/TransactionCollection'}
           examples:
             example-get-transactions-simple:
               value:
@@ -943,14 +708,13 @@ components:
           type: string
         detail:
           type: string
-        meta: { $ref: '#/components/schemas/ErrorMeta' }
+        meta: {$ref: '#/components/schemas/ErrorMeta'}
     ErrorMeta:
       type: object
       properties:
         stack:
           type: array
-          items: { type: string }
-
+          items: {type: string}
     LocationType:
       type: string
       enum:
@@ -1009,27 +773,24 @@ components:
     type:
       type: string
       description: >-
-        [resource object
-        type](https://jsonapi.org/format/#document-resource-object-identification)
+        [resource object type](https://jsonapi.org/format/#document-resource-object-identification)
     id:
       type: string
       format: uuid
       description: >-
-        [resource object
-        identifier](https://jsonapi.org/format/#document-resource-object-identification)
+        [resource object identifier](https://jsonapi.org/format/#document-resource-object-identification)
     Reservation:
       type: object
       title: Reservation
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/ItemReservation' }
+          items: {$ref: '#/components/schemas/ItemReservation'}
         relatedId:
           type: string
           description: >-
-            Here you may specify an ID to which the reservation will be related.
-            Recommended to use an UUID
-        metadata: { $ref: '#/components/schemas/metadata' }
+            Here you may specify an ID to which the reservation will be related. Recommended to use an UUID
+        metadata: {$ref: '#/components/schemas/metadata'}
       required:
         - items
         - relatedId
@@ -1071,12 +832,11 @@ components:
       properties:
         version:
           type: string
-        meta: { $ref: '#/components/schemas/meta' }
+        meta: {$ref: '#/components/schemas/meta'}
     meta:
       type: object
       description: >-
-        Non-standard meta-information that can not be represented as an
-        attribute or relationship.
+        Non-standard meta-information that can not be represented as an attribute or relationship.
     relationshipToOne:
       description: References to other resource objects in a to-one (`relationship`). Relationships can be specified by including a member in a resource's links object.
       $ref: '#/components/schemas/linkage'
@@ -1153,9 +913,9 @@ components:
     ProductVariantStockStateResource:
       type: object
       properties:
-        type: { $ref: '#/components/schemas/type' }
-        id: { $ref: '#/components/schemas/id' }
-        attributes: { $ref: '#/components/schemas/ProductVariantStockState' }
+        type: {$ref: '#/components/schemas/type'}
+        id: {$ref: '#/components/schemas/id'}
+        attributes: {$ref: '#/components/schemas/ProductVariantStockState'}
       required:
         - type
         - id
@@ -1166,7 +926,7 @@ components:
       properties:
         quantities:
           type: array
-          items: { $ref: '#/components/schemas/ProductVariantStockQuantity' }
+          items: {$ref: '#/components/schemas/ProductVariantStockQuantity'}
       required:
         - quantities
     ProductVariantStockQuantity:
@@ -1178,8 +938,8 @@ components:
         locationId:
           type: string
           format: uuid
-        status: { $ref: '#/components/schemas/StockStatus' }
-        lot: { $ref: '#/components/schemas/Lot' }
+        status: {$ref: '#/components/schemas/StockStatus'}
+        lot: {$ref: '#/components/schemas/Lot'}
         unitMultiplier:
           type: integer
           minimum: 1
@@ -1192,9 +952,9 @@ components:
     LocationResource:
       type: object
       properties:
-        type: { $ref: '#/components/schemas/type' }
-        id: { $ref: '#/components/schemas/id' }
-        attributes: { $ref: '#/components/schemas/Location' }
+        type: {$ref: '#/components/schemas/type'}
+        id: {$ref: '#/components/schemas/id'}
+        attributes: {$ref: '#/components/schemas/Location'}
       required:
         - type
         - id
@@ -1202,7 +962,7 @@ components:
     Location:
       type: object
       properties:
-        type: { $ref: '#/components/schemas/LocationType' }
+        type: {$ref: '#/components/schemas/LocationType'}
         externalId:
           description: Identifier of the external entity that this location refers to (brandUuid, warehouseUuid, etc)
           type: string
@@ -1213,10 +973,10 @@ components:
     PostingResource:
       type: object
       properties:
-        type: { $ref: '#/components/schemas/type' }
-        id: { $ref: '#/components/schemas/id' }
-        attributes: { $ref: '#/components/schemas/Posting' }
-        relationships: { $ref: '#/components/schemas/PostingsRelationships' }
+        type: {$ref: '#/components/schemas/type'}
+        id: {$ref: '#/components/schemas/id'}
+        attributes: {$ref: '#/components/schemas/Posting'}
+        relationships: {$ref: '#/components/schemas/PostingsRelationships'}
       required:
         - type
         - id
@@ -1224,7 +984,7 @@ components:
     PostingsRelationships:
       type: object
       properties:
-        transaction: { $ref: '#/components/schemas/PostingRelationshipsTransactions' }
+        transaction: {$ref: '#/components/schemas/PostingRelationshipsTransactions'}
     PostingRelationshipsTransactions:
       type: object
       properties:
@@ -1240,11 +1000,11 @@ components:
         productVariantId:
           type: string
           format: uuid
-        locationStatus: { $ref: '#/components/schemas/LocationStatus' }
+        locationStatus: {$ref: '#/components/schemas/LocationStatus'}
         quantity:
           type: integer
           description: Signed quantity delta
-        movementType: { $ref: '#/components/schemas/MovementType' }
+        movementType: {$ref: '#/components/schemas/MovementType'}
         unitMultiplier:
           type: integer
           minimum: 1
@@ -1268,10 +1028,10 @@ components:
     TransactionResource:
       type: object
       properties:
-        type: { $ref: '#/components/schemas/type' }
-        id: { $ref: '#/components/schemas/id' }
-        attributes: { $ref: '#/components/schemas/Transaction' }
-        relationships: { $ref: '#/components/schemas/TransactionRelationships' }
+        type: {$ref: '#/components/schemas/type'}
+        id: {$ref: '#/components/schemas/id'}
+        attributes: {$ref: '#/components/schemas/Transaction'}
+        relationships: {$ref: '#/components/schemas/TransactionRelationships'}
       required:
         - type
         - id
@@ -1279,7 +1039,7 @@ components:
     TransactionRelationships:
       type: object
       properties:
-        postings: { $ref: '#/components/schemas/TransactionRelationshipsPostings' }
+        postings: {$ref: '#/components/schemas/TransactionRelationshipsPostings'}
     TransactionRelationshipsPostings:
       type: object
       properties:
@@ -1294,7 +1054,7 @@ components:
         createdAt:
           type: string
           format: date-time
-        metadata: { $ref: '#/components/schemas/metadata' }
+        metadata: {$ref: '#/components/schemas/metadata'}
       required:
         - relatedId
         - createdAt
@@ -1319,10 +1079,10 @@ components:
       properties:
         data:
           type: array
-          items: { $ref: '#/components/schemas/PostingResource' }
-        jsonapi: { $ref: '#/components/schemas/jsonapi' }
-        meta: { $ref: '#/components/schemas/paginationMeta' }
-        links: { $ref: '#/components/schemas/paginationLinks'}
+          items: {$ref: '#/components/schemas/PostingResource'}
+        jsonapi: {$ref: '#/components/schemas/jsonapi'}
+        meta: {$ref: '#/components/schemas/paginationMeta'}
+        links: {$ref: '#/components/schemas/paginationLinks'}
         included:
           type: array
           items:
@@ -1336,10 +1096,10 @@ components:
       properties:
         data:
           type: array
-          items: { $ref: '#/components/schemas/TransactionResource' }
-        jsonapi: { $ref: '#/components/schemas/jsonapi' }
-        meta: { $ref: '#/components/schemas/paginationMeta' }
-        links: { $ref: '#/components/schemas/paginationLinks'}
+          items: {$ref: '#/components/schemas/TransactionResource'}
+        jsonapi: {$ref: '#/components/schemas/jsonapi'}
+        meta: {$ref: '#/components/schemas/paginationMeta'}
+        links: {$ref: '#/components/schemas/paginationLinks'}
         included:
           type: array
           items:
@@ -1351,14 +1111,13 @@ components:
     StockReservation:
       type: object
       properties:
-        type: { $ref: '#/components/schemas/type' }
-        id: { $ref: '#/components/schemas/id' }
-        attributes: { $ref: '#/components/schemas/Reservation' }
+        type: {$ref: '#/components/schemas/type'}
+        id: {$ref: '#/components/schemas/id'}
+        attributes: {$ref: '#/components/schemas/Reservation'}
       required:
         - type
         - id
         - attributes
-
   parameters:
     acceptInHeader:
       name: Accept
@@ -1444,7 +1203,7 @@ components:
       schema:
         type: array
         minItems: 1
-        items: { $ref: '#/components/schemas/StockStatus' }
+        items: {$ref: '#/components/schemas/StockStatus'}
     locationStatusFilter:
       name: filter[locationStatus][]
       in: query
@@ -1453,7 +1212,7 @@ components:
       schema:
         type: array
         minItems: 1
-        items: { $ref: '#/components/schemas/LocationStatus' }
+        items: {$ref: '#/components/schemas/LocationStatus'}
     locationTypeFilter:
       name: filter[locationTypes][]
       in: query
@@ -1462,7 +1221,7 @@ components:
       schema:
         type: array
         minItems: 1
-        items: { $ref: '#/components/schemas/LocationType' }
+        items: {$ref: '#/components/schemas/LocationType'}
     locationIdFilter:
       name: filter[locationIds][]
       in: query
