@@ -1,0 +1,164 @@
+openapi: 3.1.0
+info:
+  version: 1.0.0
+  title: Fulfillment service
+  summary: API specification for the fulfillment service
+servers:
+  - url: http://www.ankorlocal.com:8000
+    description: Local Development Server
+  - url: https://www.preprod.ankorstore.com
+    description: Staging Environment
+  - url: https://www.ankorstore.com
+    description: Prod Environment
+paths:
+  /api/fulfillment/v1/media/upload:
+    post:
+      summary: Upload PDF documents
+      description: >
+        Upload one or more PDF documents linked to a fulfillment order (`masterOrderUuid`).
+        Each document may include its own UUID, or the backend can generate one if not provided.
+      operationId: uploadMedia
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - masterOrderUuid
+                - documents
+              properties:
+                masterOrderUuid:
+                  type: string
+                  format: uuid
+                  description: UUID of the master order to which the documents will be linked.
+                documents:
+                  type: array
+                  description: List of documents to upload.
+                  items:
+                    type: object
+                    properties:
+                      file:
+                        type: string
+                        format: binary
+                        description: PDF file to upload.
+                      uuid:
+                        type: string
+                        format: uuid
+                        description: Optional UUID for the document. If omitted, the server generates one.
+            encoding:
+              documents:
+                style: form
+                explode: true
+      responses:
+        "201":
+          description: Documents successfully uploaded.
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/MediaList"
+                  jsonapi:
+                    $ref: "#/components/schemas/JsonApiObject"
+        "422":
+          description: Validation error during upload.
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    $ref: "#/components/schemas/ErrorList"
+                  jsonapi:
+                    $ref: "#/components/schemas/JsonApiObject"
+      tags:
+        - Media
+
+components:
+  schemas:
+    MediaAttributes:
+      type: object
+      description: Attributes describing an uploaded document.
+      properties:
+        masterOrderUuid:
+          type: string
+          format: uuid
+          description: UUID of the master order associated with the document.
+        originalFilename:
+          type: string
+          description: Original file name.
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the document was created.
+
+    Media:
+      type: object
+      description: Representation of a media resource.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the uploaded document.
+        type:
+          type: string
+          example: media
+          description: Resource type (always `media`).
+        attributes:
+          $ref: "#/components/schemas/MediaAttributes"
+
+    MediaList:
+      type: array
+      description: List of media resources.
+      items:
+        $ref: "#/components/schemas/Media"
+
+    ErrorMeta:
+      type: object
+      description: Additional metadata for an error.
+      properties:
+        filename:
+          type: string
+          description: Name of the file related to the error.
+
+    Error:
+      type: object
+      description: A single error item.
+      properties:
+        status:
+          type: string
+          example: "422"
+          description: HTTP status code.
+        code:
+          type: string
+          enum:
+            - invalid_file_extension
+            - file_too_large
+            - max_files_reached
+          description: >
+            Error code:
+              * `invalid_file_extension`: at least one submitted file has an invalid extension.
+              * `file_too_large`: at least one file exceeds the maximum allowed size.
+              * `max_files_reached`: the maximum number of files for the master order has been reached.
+        description:
+          type: string
+          description: Human-readable description of the error.
+        meta:
+          $ref: "#/components/schemas/ErrorMeta"
+
+    ErrorList:
+      type: array
+      description: List of errors.
+      items:
+        $ref: "#/components/schemas/Error"
+
+    JsonApiObject:
+      type: object
+      description: JSON:API version information.
+      properties:
+        version:
+          type: string
+          example: "1.0"
+          description: JSON:API specification version.

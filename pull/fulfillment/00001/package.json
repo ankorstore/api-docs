@@ -1,0 +1,13 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "main": "",
+  "author": "",
+  "license": "",
+  "description": "",
+  "dependencies": {
+    "@stoplight/spectral-cli": "^6.14.2",
+    "swagger-cli": "^4.0.4",
+     "@ankorstore/spectral-api-ruleset": "^1.0.3"
+  }
+}
