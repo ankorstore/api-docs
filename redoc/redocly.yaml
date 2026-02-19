@@ -1,97 +1,96 @@
 apis:
   public:
     root: ./build/redoc
-
-theme:
-  openapi:
-    expandResponses: '200,201'
-    pathInMiddlePanel: true
-    showAccessMode: true
-    hideOneOfDescription: false
-    simpleOneOfTypeLabel: true
-    schemaExpansionLevel: '4'
-    expandSingleSchemaField: true
-    jsonSampleExpandLevel: '4'
-    nativeScrollbars: true
-    htmlTemplate: ./redoc/index.hbs
-    labels:
-      enum: 'Allowed values'
-      enumSingleValue: 'Allowed value'
     theme:
-      typography:
-        fontSize: '14px'
-        lineHeight: '1.6em'
-        fontFamily: 'Poppins, sans-serif'
-        fontWeightLight: '300'
-        fontWeightRegular: '400'
-        fontWeightBold: '600'
-        headings:
-          fontWeight: '600'
-          fontFamily: 'Poppins, sans-serif'
-          lineHeight: '2.75rem'
-        links:
-          color: '#14060a'
-          hover: '#0b00f4'
-          textDecoration: 'underline'
-          hoverTextDecoration: 'none'
-        code:
-          color: '#d41646'
-          backgroundColor: '#eeeeee'
-          fontFamily: 'monospace'
-          fontSize: '13px'
-      colors:
-        text:
-          primary: '#14060a'
-          secondary: '#14060a'
-          light: '#14060a'
-        http:
-          delete: '#d41646'
-          get: '#557570'
-          post: '#0b00f4'
-        responses:
-          error:
-            color: '#14060a'
-            borderColor: '#d41646'
-            backgroundColor: '#fbe8ed'
-            tabTextColor: '#d41646'
-          success:
-            color: '#14060a'
-            borderColor: '#557570'
-            backgroundColor: '#e6f4b5'
-            tabTextColor: '#557570'
-        primary:
-          main: '#14060a'
-        accent:
-          main: '#517070'
-          light: '#d3fd51'
-        error:
-          main: '#d41646'
-          light: '#f8eddd'
-        success:
-          main: '#557570'
-          light: '#e6f4b5'
-        warning:
-          main: '#fef6da'
-          light: '#ff5600'
-      schema:
-        breakFieldNames: true
-        linesColor: '#c8c4bf'
-        nestingSpacing: '0.8em'
-        nestedBackground: 'transparent'
-        requireLabelColor: '#d41646'
-        typeTitleColor: '#777272'
-        typeNameColor: '#777272'
-      logo:
-        gutter: '15px'
-        maxWidth: '200px'
-      sidebar:
-        width: '300px'
-        backgroundColor: '#fff'
-        groupItems:
-          textTransform: 'uppercase'
-      rightPanel:
-        backgroundColor: '#14060a'
-      spacing:
-        unit: 4
-      codeBlock:
-        backgroundColor: '#14060a'
+      openapi:
+        expandResponses: '200,201'
+        htmlTemplate: ./redoc/index.hbs
+        pathInMiddlePanel: true
+        showAccessMode: true
+        hideOneOfDescription: false
+        simpleOneOfTypeLabel: true
+        schemaExpansionLevel: '4'
+        expandSingleSchemaField: true
+        jsonSampleExpandLevel: '4'
+        nativeScrollbars: true
+        labels:
+          enum: 'Allowed values'
+          enumSingleValue: 'Allowed value'
+        theme:
+          typography:
+            fontSize: '14px'
+            lineHeight: '1.6em'
+            fontFamily: 'Poppins, sans-serif'
+            fontWeightLight: '300'
+            fontWeightRegular: '400'
+            fontWeightBold: '600'
+            headings:
+              fontWeight: '600'
+              fontFamily: 'Poppins, sans-serif'
+              lineHeight: '2.75rem'
+            links:
+              color: '#14060a'
+              hover: '#0b00f4'
+              textDecoration: 'underline'
+              hoverTextDecoration: 'none'
+            code:
+              color: '#d41646'
+              backgroundColor: '#eeeeee'
+              fontFamily: 'monospace'
+              fontSize: '13px'
+          colors:
+            text:
+              primary: '#14060a'
+              secondary: '#14060a'
+              light: '#14060a'
+            http:
+              delete: '#d41646'
+              get: '#557570'
+              post: '#0b00f4'
+            responses:
+              error:
+                color: '#14060a'
+                borderColor: '#d41646'
+                backgroundColor: '#fbe8ed'
+                tabTextColor: '#d41646'
+              success:
+                color: '#14060a'
+                borderColor: '#557570'
+                backgroundColor: '#e6f4b5'
+                tabTextColor: '#557570'
+            primary:
+              main: '#14060a'
+            accent:
+              main: '#517070'
+              light: '#d3fd51'
+            error:
+              main: '#d41646'
+              light: '#f8eddd'
+            success:
+              main: '#557570'
+              light: '#e6f4b5'
+            warning:
+              main: '#fef6da'
+              light: '#ff5600'
+          schema:
+            breakFieldNames: true
+            linesColor: '#c8c4bf'
+            nestingSpacing: '0.8em'
+            nestedBackground: 'transparent'
+            requireLabelColor: '#d41646'
+            typeTitleColor: '#777272'
+            typeNameColor: '#777272'
+          logo:
+            gutter: '15px'
+            maxWidth: '200px'
+          sidebar:
+            width: '300px'
+            backgroundColor: '#fff'
+            groupItems:
+              textTransform: 'uppercase'
+          rightPanel:
+            backgroundColor: '#14060a'
+          spacing:
+            unit: 4
+          codeBlock:
+            backgroundColor: '#14060a'

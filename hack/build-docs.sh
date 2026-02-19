@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-REDOCLY="@redocly/cli@1.18"
+REDOCLY="npx -y @redocly/cli@2.19.0"
 
 rm -rf build/redoc
 mkdir -p build/redoc
@@ -56,7 +56,7 @@ for projectFolder in pull/*/ ; do
     done
 done
 
-npx -y $REDOCLY join build/redoc/*.yaml -o build/redoc/openapi.yaml --prefix-components-with-info-prop x-prefix --prefix-tags-with-info-prop x-prefix
+$REDOCLY join build/redoc/*.yaml -o build/redoc/openapi.yaml --prefix-components-with-info-prop x-prefix --prefix-tags-with-info-prop x-prefix
 
 # Set OpenAPI version and title
 yq eval '.openapi = "3.1.0"' -i build/redoc/openapi.yaml
@@ -64,6 +64,6 @@ yq eval '.info.title = "Ankorstore APIs"' -i build/redoc/openapi.yaml
 
 spec='build/redoc/openapi.yaml'
 
-npx -y $REDOCLY build-docs -t redoc/index.hbs -o build/docs/index.html "$spec" --config redoc/redocly.yaml
+$REDOCLY build-docs -t redoc/index.hbs -o build/docs/index.html "$spec" --config redoc/redocly.yaml
 
 cp build/docs/index.html publish/index.html
