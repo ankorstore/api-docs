@@ -64,6 +64,14 @@ yq eval '.info.title = "Ankorstore APIs"' -i build/redoc/openapi.yaml
 
 spec='build/redoc/openapi.yaml'
 
+# Generate changelog and inject it into the combined spec
+CHANGELOG=$(./hack/generate-changelog.sh)
+yq '.tags = [{"name": "Changelog", "description": "PLACEHOLDER"}] + .tags' -i "$spec"
+CHANGELOG="$CHANGELOG" yq '(.tags[] | select(.name == "Changelog")).description = strenv(CHANGELOG)' -i "$spec"
+# Remove the old prefixed Ankorstore_Changelog from tags and x-tagGroups, replaced by the new combined one
+yq 'del(.tags[] | select(.name == "Ankorstore_Changelog"))' -i "$spec"
+yq '.x-tagGroups[0].tags = ["Changelog"] + (.x-tagGroups[0].tags | map(select(. != "Ankorstore_Changelog")))' -i "$spec"
+
 $REDOCLY build-docs -t redoc/index.hbs -o build/docs/index.html "$spec" --config redoc/redocly.yaml
 
 cp build/docs/index.html publish/index.html
