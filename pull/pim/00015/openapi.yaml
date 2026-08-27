@@ -1,0 +1,1046 @@
+openapi: 3.1.0
+info:
+  title: Ankorstore Product Import API
+  description: Public API for brands to import their catalog into Ankorstore. Product variants are submitted as asynchronous, per-item validated import jobs.
+  version: 0.6.0
+  x-prefix: Pim
+servers:
+  - url: https://www.ankorstore.com/api/pim/v1
+    description: Production
+  - url: https://www.public.ankorstore-sandbox.com/api/pim/v1
+    description: Sandbox
+security:
+  - ProductionOAuth2ClientCredentials: []
+tags: []
+paths:
+  /product-variants/import:
+    post:
+      operationId: importProductVariants
+      summary: Create a product variant import job
+      description: |
+        Accepts a batch of product variant resources and creates an asynchronous
+        import job. Each item in the batch is stored as an individual job item.
+
+        Per-item structural and cross-batch problems do **not** reject the
+        request. They are recorded as per-item errors on the created job and
+        surfaced via `GET /import-jobs/{id}/items?filter[status]=failed`:
+
+        - missing or malformed required fields (operation, product_uuid,
+          variant_uuid, sku, product_name, IAN format, …)
+        - duplicate SKU within the batch — every colliding occurrence is
+          marked failed
+        - items sharing a `product_uuid` whose product-level fields disagree
+          with the first item in the group (first item wins; subsequent
+          disagreements are marked failed)
+
+        The endpoint only returns 4xx for envelope-level failures (empty
+        `data`, malformed JSON, body over 2 MB).
+
+        Set `meta.chunked = true` to open a multi-request session instead: the
+        returned job is left unsealed (no `sealed_at`) so more items can be added
+        with `POST /import-jobs/{id}/items`, and it only completes after
+        `POST /import-jobs/{id}/finalize`. This lets a catalog larger than a
+        single request map to one job — and therefore one error report.
+      tags:
+        - Import
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRequest'
+      responses:
+        '201':
+          description: Import job created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobResponse'
+        '400':
+          description: Envelope-level failure (empty `data` array, malformed JSON).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authenticated account is not a brand account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request body exceeds the 2 MB size limit.
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /import-jobs:
+    get:
+      operationId: listImportJobs
+      summary: List import jobs
+      description: |
+        Returns the authenticated brand's import jobs, newest-first, using
+        cursor (keyset) pagination. Results are scoped to the brand resolved
+        from the authentication context.
+      tags:
+        - Import
+      parameters:
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageAfter'
+        - $ref: '#/components/parameters/PageBefore'
+      responses:
+        '200':
+          description: Paginated list of import jobs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobListResponse'
+        '400':
+          description: Invalid pagination parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authenticated account is not a brand account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /import-jobs/{id}:
+    get:
+      operationId: getImportJob
+      summary: Get an import job
+      description: |
+        Returns a single import job by id, scoped to the authenticated brand.
+      tags:
+        - Import
+      parameters:
+        - $ref: '#/components/parameters/ImportJobId'
+      responses:
+        '200':
+          description: The requested import job.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobResponse'
+        '400':
+          description: Malformed import job id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authenticated account is not a brand account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No import job with this id exists for the authenticated brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /import-jobs/{id}/items:
+    get:
+      operationId: listImportJobItems
+      summary: List an import job's items
+      description: |
+        Returns the items belonging to an import job, oldest-first, using
+        cursor (keyset) pagination and optionally filtered by item status.
+        `payload` and `error_details` are returned as raw nested JSON.
+      tags:
+        - Import
+      parameters:
+        - $ref: '#/components/parameters/ImportJobId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageAfter'
+        - $ref: '#/components/parameters/PageBefore'
+        - $ref: '#/components/parameters/ItemStatusFilter'
+      responses:
+        '200':
+          description: Paginated list of the job's items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobItemListResponse'
+        '400':
+          description: Malformed import job id or invalid pagination/filter parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authenticated account is not a brand account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No import job with this id exists for the authenticated brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: appendImportJobItems
+      summary: Append items to an open chunked import job
+      description: |
+        Adds another chunk of items to an open chunked import session (one
+        created with `meta.chunked = true`). The request body is the same shape
+        as the create endpoint; `meta` is ignored — chunked-ness is a property of
+        the targeted job.
+
+        Per-item validation matches the create endpoint, plus a cross-chunk SKU
+        dedup: an item whose SKU was already submitted in an earlier chunk of the
+        same job is marked failed (code `duplicate_within_import`) rather than
+        rejecting the request.
+
+        Returns `409` if the job is already sealed (a single-request import or a
+        finalized session) and therefore no longer accepts items.
+      tags:
+        - Import
+      parameters:
+        - $ref: '#/components/parameters/ImportJobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRequest'
+      responses:
+        '200':
+          description: Items appended; returns the updated job.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobResponse'
+        '400':
+          description: Malformed import job id, empty `data`, or malformed JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authenticated account is not a brand account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No import job with this id exists for the authenticated brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The import job is sealed and no longer accepts items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request body exceeds the size limit.
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /import-jobs/{id}/finalize:
+    post:
+      operationId: finalizeImportJob
+      summary: Finalize (seal) a chunked import job
+      description: |
+        Seals an open chunked import session so it can complete: no further items
+        are accepted, and the job transitions to `completed`/`failed` once all
+        its items are processed. Idempotent — finalizing an already-sealed job
+        re-evaluates completion and returns the job unchanged.
+      tags:
+        - Import
+      parameters:
+        - $ref: '#/components/parameters/ImportJobId'
+      responses:
+        '200':
+          description: Job sealed; returns the (possibly already completed) job.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJobResponse'
+        '400':
+          description: Malformed import job id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authenticated account is not a brand account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No import job with this id exists for the authenticated brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    ProductionOAuth2ClientCredentials:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://www.ankorstore.com/oauth/token
+          refreshUrl: https://www.ankorstore.com/oauth/token
+          scopes: {}
+    TestOauth2ClientCredentials:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://www.public.ankorstore-sandbox.com/oauth/token
+          refreshUrl: https://www.public.ankorstore-sandbox.com/oauth/token
+          scopes: {}
+  parameters:
+    ImportJobId:
+      name: id
+      in: path
+      required: true
+      description: Import job UUID.
+      schema:
+        type: string
+        format: uuid
+    PageLimit:
+      name: page[limit]
+      in: query
+      required: false
+      description: |
+        Number of resources per page. Defaults to 20; values above 100 are
+        clamped to 100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    PageAfter:
+      name: page[after]
+      in: query
+      required: false
+      description: |
+        Opaque keyset cursor; returns resources positioned after it. Use the
+        value from `meta.page.to` or the `next` link of a previous response.
+      schema:
+        type: string
+    PageBefore:
+      name: page[before]
+      in: query
+      required: false
+      description: |
+        Opaque keyset cursor; returns resources positioned before it. Use the
+        value from `meta.page.from` or the `prev` link of a previous response.
+      schema:
+        type: string
+    ItemStatusFilter:
+      name: filter[status]
+      in: query
+      required: false
+      description: Restrict the listing to items in a single status.
+      schema:
+        type: string
+        enum:
+          - pending
+          - processing
+          - success
+          - failed
+  schemas:
+    ImportRequest:
+      type: object
+      required:
+        - data
+      properties:
+        meta:
+          $ref: '#/components/schemas/ImportMeta'
+        data:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/ImportVariantResource'
+    ImportMeta:
+      type: object
+      description: Optional metadata for the import request.
+      properties:
+        mode:
+          type: string
+          enum:
+            - sync
+            - async
+          description: Execution mode for the import job.
+        chunked:
+          type: boolean
+          description: |
+            When true, opens the job as a multi-request chunked session: the job
+            is left unsealed so further items can be added via
+            `POST /import-jobs/{id}/items`, and it only completes after an
+            explicit `POST /import-jobs/{id}/finalize`. Use this to import a
+            catalog larger than a single request's item/size limit as one job
+            (and therefore one error report). When omitted or false the import is
+            a single request — the job is sealed on creation and completes on its
+            own.
+        expected_total_items:
+          type: integer
+          minimum: 0
+          description: |
+            Final item count the chunked import will reach. Lets a client show
+            accurate progress while chunks are still streaming (total_items only
+            reflects what has been appended so far).
+        expected_total_products:
+          type: integer
+          minimum: 0
+          description: Final distinct-product count the chunked import will reach.
+    ImportVariantResource:
+      type: object
+      required:
+        - type
+        - attributes
+      properties:
+        type:
+          type: string
+          const: product-variants
+        attributes:
+          $ref: '#/components/schemas/ImportVariantAttributes'
+    ImportVariantAttributes:
+      oneOf:
+        - $ref: '#/components/schemas/CreateVariantAttributes'
+        - $ref: '#/components/schemas/UpdateVariantAttributes'
+        - $ref: '#/components/schemas/DeleteVariantAttributes'
+      discriminator:
+        propertyName: operation
+        mapping:
+          create: '#/components/schemas/CreateVariantAttributes'
+          update: '#/components/schemas/UpdateVariantAttributes'
+          delete: '#/components/schemas/DeleteVariantAttributes'
+    ImportVariantAttributesBase:
+      type: object
+      description: Common properties shared across all import variant operations.
+      properties:
+        product_uuid:
+          type: string
+          format: uuid
+          description: UUID of an existing product. Used to group variants under the same product.
+        variant_uuid:
+          type: string
+          format: uuid
+          description: |
+            UUID of an existing variant. Required for `update` and `delete`
+            operations.
+        product_name:
+          type: string
+          minLength: 3
+          maxLength: 255
+          description: |
+            Product name. Items sharing the same `product_uuid`
+            must have consistent product-level fields.
+        product_description:
+          type: string
+          description: |
+            Product description. When creating, minimum 30 characters
+            (or minimum 1 character if an existing description is ≤30 chars).
+        product_discount_rate:
+          type: integer
+          minimum: 0
+        product_unit_multiplier:
+          type: integer
+          exclusiveMinimum: 0
+        product_vat_rate:
+          type: number
+        product_made_in:
+          type: string
+        product_hs_code:
+          type: string
+          description: Harmonized System code. Must be numeric, at least 4 characters.
+        product_tags:
+          type: array
+          items:
+            type: string
+            enum:
+              - tags_organic
+              - tags_handmade
+              - tags_eco_friendly
+              - tags_zero_waste
+              - tags_cruelty_free
+              - tags_bestseller
+              - tags_vegan
+              - tags_contains_alcohol
+        product_images:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+        product_dimensions:
+          type: string
+          maxLength: 255
+        product_net_weight:
+          type: number
+          minimum: 0
+        product_capacity:
+          type: string
+          maxLength: 255
+        product_shelf_life_days:
+          type: integer
+          minimum: 1
+          maximum: 32767
+        product_storage_temperature:
+          type: string
+          enum:
+            - controlled
+            - fresh
+            - frozen
+            - ultra_fresh_highly_perishable
+            - ultra_fresh_strict_chilled
+            - none
+        product_cosmetic_inci_list:
+          type: string
+          maxLength: 65535
+        product_grocery_ingredients_list:
+          type: string
+          maxLength: 65535
+        product_fashion_composition:
+          type: string
+          maxLength: 65535
+        product_home_materials:
+          type: string
+          maxLength: 65535
+        sku:
+          type: string
+          maxLength: 50
+          description: Stock Keeping Unit. Must be unique within the request.
+        ian:
+          type: string
+          pattern: ^\d{13}$
+          description: International Article Number (EAN-13).
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/Option'
+        retail_price:
+          type: integer
+          exclusiveMinimum: 0
+          description: Retail price in cents. Must be greater than `original_wholesale_price`.
+        original_wholesale_price:
+          type: integer
+          exclusiveMinimum: 0
+          description: Wholesale price in cents. Must be less than `retail_price`.
+        discount_rate:
+          type: integer
+          minimum: 0
+        stock_quantity:
+          type: integer
+          minimum: 0
+        is_always_in_stock:
+          type: boolean
+        inventory_policy:
+          type: string
+          enum:
+            - deny
+            - continue
+          default: deny
+          description: |
+            Controls whether the variant continues selling when the on-hand
+            stock reaches zero. `deny` (default) stops sales at the brand
+            location once available <= 0; `continue` keeps the variant
+            orderable. Mutually exclusive with `is_always_in_stock=true`.
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+    CreateVariantAttributes:
+      description: |
+        Attributes for creating a new variant (and optionally a new product).
+        Requires all product-level and variant-level mandatory fields.
+      allOf:
+        - $ref: '#/components/schemas/ImportVariantAttributesBase'
+        - type: object
+          required:
+            - operation
+            - product_uuid
+            - sku
+            - product_name
+            - product_description
+            - product_unit_multiplier
+            - product_vat_rate
+            - product_images
+            - retail_price
+            - original_wholesale_price
+          properties:
+            operation:
+              type: string
+              const: create
+            product_uuid:
+              type: string
+              format: uuid
+            sku:
+              type: string
+            product_name:
+              type: string
+            product_description:
+              type: string
+            product_unit_multiplier:
+              type: integer
+            product_vat_rate:
+              type: number
+            product_images:
+              type: array
+            retail_price:
+              type: integer
+            original_wholesale_price:
+              type: integer
+    UpdateVariantAttributes:
+      description: |
+        Attributes for updating an existing variant. Only `product_uuid` and
+        `variant_uuid` are required; all other fields are optional and only
+        the provided fields will be updated.
+      allOf:
+        - $ref: '#/components/schemas/ImportVariantAttributesBase'
+        - type: object
+          required:
+            - operation
+            - product_uuid
+            - variant_uuid
+          properties:
+            operation:
+              type: string
+              const: update
+            product_uuid:
+              type: string
+              format: uuid
+            variant_uuid:
+              type: string
+              format: uuid
+    DeleteVariantAttributes:
+      description: |
+        Attributes for deleting an existing variant. Only `variant_uuid` is
+        required to identify the variant to remove.
+      allOf:
+        - $ref: '#/components/schemas/ImportVariantAttributesBase'
+        - type: object
+          required:
+            - operation
+            - variant_uuid
+          properties:
+            operation:
+              type: string
+              const: delete
+            variant_uuid:
+              type: string
+              format: uuid
+    Image:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+        order:
+          type: integer
+    Option:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+    JsonAPI:
+      type: object
+      description: The JSON:API version object included in every response.
+      required:
+        - version
+      properties:
+        version:
+          type: string
+          examples:
+            - '1.0'
+    ImportJobAttributes:
+      type: object
+      description: |
+        The *_items counts are per variant; the *_products counts are the same
+        metrics aggregated per product.
+      required:
+        - status
+        - total_items
+        - created_at
+      properties:
+        status:
+          type: string
+          enum:
+            - pending
+            - processing
+            - completed
+            - failed
+        total_items:
+          type: integer
+          minimum: 1
+          description: Number of variants in the job.
+        processed_items:
+          type: integer
+          description: Variants that have reached a terminal status.
+        successful_items:
+          type: integer
+          description: Variants that succeeded.
+        failed_items:
+          type: integer
+          description: Variants that failed.
+        total_products:
+          type: integer
+          description: Distinct products spanned by the job's variants.
+        processed_products:
+          type: integer
+          description: Products whose every variant has reached a terminal status.
+        successful_products:
+          type: integer
+          description: Products whose every variant succeeded.
+        failed_products:
+          type: integer
+          description: Products with at least one failed variant.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        sealed_at:
+          type: string
+          format: date-time
+          description: |
+            When the import was sealed and stopped accepting items (set on
+            creation for a single-request import, or on finalize for a chunked
+            session). Absent while a chunked session is still open.
+        expected_total_items:
+          type: integer
+          minimum: 0
+          description: |
+            Final item count declared by a chunked import, for accurate progress
+            while chunks stream in. Absent for single-request imports. A sealed
+            job whose total_items is below this was truncated before all chunks
+            arrived.
+        expected_total_products:
+          type: integer
+          minimum: 0
+          description: Final distinct-product count declared by a chunked import.
+        origin:
+          type: string
+          description: |
+            Origin of the import as declared in the request meta (e.g.
+            `file_import`). Absent when none was provided.
+    ImportJobResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          const: import-jobs
+        id:
+          type: string
+          format: uuid
+        attributes:
+          $ref: '#/components/schemas/ImportJobAttributes'
+    ImportJobResponse:
+      type: object
+      required:
+        - data
+        - jsonapi
+      properties:
+        data:
+          $ref: '#/components/schemas/ImportJobResource'
+        jsonapi:
+          $ref: '#/components/schemas/JsonAPI'
+    ImportJobListResponse:
+      type: object
+      required:
+        - data
+        - jsonapi
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportJobResource'
+        jsonapi:
+          $ref: '#/components/schemas/JsonAPI'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    ImportJobItemAttributes:
+      type: object
+      required:
+        - sku
+        - operation
+        - status
+        - product_uuid
+        - variant_uuid
+        - payload
+        - error_details
+        - created_at
+        - updated_at
+      properties:
+        sku:
+          type: string
+        operation:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        status:
+          type: string
+          enum:
+            - pending
+            - dispatched
+            - processing
+            - success
+            - failed
+        product_uuid:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        variant_uuid:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: true
+          description: The stored variant import payload, as originally submitted.
+        error_details:
+          oneOf:
+            - $ref: '#/components/schemas/ItemError'
+            - type: 'null'
+          description: |
+            The normalized error envelope when the item failed; null otherwise.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ImportJobItemResource:
+      type: object
+      required:
+        - type
+        - id
+        - attributes
+      properties:
+        type:
+          type: string
+          const: import-job-items
+        id:
+          type: string
+          format: uuid
+        attributes:
+          $ref: '#/components/schemas/ImportJobItemAttributes'
+    ImportJobItemListResponse:
+      type: object
+      required:
+        - data
+        - jsonapi
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportJobItemResource'
+        jsonapi:
+          $ref: '#/components/schemas/JsonAPI'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    ItemError:
+      type: object
+      description: Normalized error envelope stored in an item's error_details.
+      required:
+        - code
+        - origin
+        - message
+      properties:
+        code:
+          type: string
+          description: Envelope-level category code (e.g. validation_failed).
+        origin:
+          type: string
+          description: Which layer produced the error.
+          enum:
+            - orchestration
+            - ingest_sync
+            - ingest_async
+        message:
+          type: string
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIssue'
+    ItemIssue:
+      type: object
+      description: A single normalized problem within an ItemError.
+      required:
+        - message
+      properties:
+        scope:
+          type: string
+          enum:
+            - product
+            - variant
+            - operational
+        field:
+          type: string
+          description: Ingest leaf attribute name, for field-validation issues.
+        code:
+          type: string
+        message:
+          type: string
+        context:
+          type: object
+          additionalProperties: true
+          description: Brand-safe contextual data for operational failures.
+    PaginationLinks:
+      type: object
+      description: |
+        Absolute cursor links. `prev` is present only when paging forward;
+        `next` only when more resources remain.
+      properties:
+        first:
+          type: string
+          format: uri
+        prev:
+          type: string
+          format: uri
+        next:
+          type: string
+          format: uri
+    PaginationMeta:
+      type: object
+      required:
+        - page
+      properties:
+        page:
+          type: object
+          required:
+            - from
+            - to
+            - hasMore
+            - perPage
+          properties:
+            from:
+              type:
+                - string
+                - 'null'
+              description: Cursor of the first resource in the current page.
+            to:
+              type:
+                - string
+                - 'null'
+              description: Cursor of the last resource in the current page.
+            hasMore:
+              type: boolean
+              description: Whether more resources remain after this page.
+            perPage:
+              type: integer
+              description: Effective page size applied to this response.
+    ErrorResponse:
+      type: object
+      required:
+        - errors
+      properties:
+        errors:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/APIError'
+    APIError:
+      type: object
+      required:
+        - status
+        - title
+        - detail
+      properties:
+        status:
+          type: string
+          description: HTTP status code as a string.
+        title:
+          type: string
+          description: Short human-readable summary of the error.
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+        field:
+          type: string
+          description: JSON path to the field that caused the error, if applicable.
