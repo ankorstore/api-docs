@@ -20,6 +20,24 @@ update_operation_ids() {
     yq eval '(.paths[] | .[] | select(has("operationId")) | .operationId) += "-'"$new_prefix"'"' -i "$file"
 }
 
+# Descriptions link to tags and operations by their pre-join names, so the renames above and the
+# tag prefixing done by `redocly join` leave those anchors pointing at nothing. Rename them the
+# same way. A tag segment that already holds an underscore is a link into another spec, and keeps
+# the prefix it was written with.
+update_anchor_links() {
+    local file="$1"
+    local prefix="$2"
+    local folder="$3"
+
+    local op_suffix="-${folder}-${prefix}"
+
+    PREFIX="$prefix" OP_SUFFIX="$op_suffix" perl -0777 -pi -e '
+        my ($p, $s) = ($ENV{PREFIX}, $ENV{OP_SUFFIX});
+        s{\(\#tag/(?![^)/]*_)([^)/]+)/operation/([^)]+)\)}{(#tag/${p}_$1/operation/$2$s)}g;
+        s{\(\#tag/(?![^)/]*_)([^)/]+)((?:/[^)]+)?)\)}{(#tag/${p}_$1$2)}g;
+    ' "$file"
+}
+
 for projectFolder in pull/*/ ; do
     folderName=$(basename "$projectFolder")
 
@@ -53,6 +71,7 @@ for projectFolder in pull/*/ ; do
         fi
 
         update_operation_ids "$buildFile" "$prefix"
+        update_anchor_links "$buildFile" "$prefix"
     done
 done
 
@@ -71,6 +90,11 @@ CHANGELOG="$CHANGELOG" yq '(.tags[] | select(.name == "Changelog")).description 
 # Remove the old prefixed Ankorstore_Changelog from tags and x-tagGroups, replaced by the new combined one
 yq 'del(.tags[] | select(.name == "Ankorstore_Changelog"))' -i "$spec"
 yq '.x-tagGroups[0].tags = ["Changelog"] + (.x-tagGroups[0].tags | map(select(. != "Ankorstore_Changelog")))' -i "$spec"
+# The changelog is read back out of the source spec, so its anchors have not been renamed yet.
+# Anchors already in the joined spec carry a prefix and are left alone.
+update_anchor_links "$spec" "$(yq eval '.info["x-prefix"]' "$spec")" ""
+# The combined Changelog tag is the one exception to the prefixing, so point its links back at it
+perl -pi -e 's{\(\#tag/\w+_Changelog\)}{(#tag/Changelog)}g' "$spec"
 
 $REDOCLY build-docs -t redoc/index.hbs -o build/docs/index.html "$spec" --config redoc/redocly.yaml
 
